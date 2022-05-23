@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 import uuid
@@ -5,24 +6,23 @@ import uuid
 import uvicorn
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse, FileResponse
+from fastapi_utils.tasks import repeat_every
 
-import threading
-
+logger = logging.getLogger(__name__)
 data_dir = "/data/image.server"
-
-
-def monitor_file_system(source_dir, keep_file_days):
-    while True:
-        print("Monitoring : " + source_dir)
-        now = time.time() - keep_file_days * 86400
-        for f in os.listdir(source_dir):
-            fname = os.path.join(source_dir, f)
-            if os.stat(fname).st_mtime < now:
-                os.remove(fname)
-        time.sleep(300)
-
+keep_file_days = 15
 
 app = FastAPI()
+
+
+@app.on_event("startup")
+@repeat_every(seconds=1800, logger=logger, wait_first=False)
+def periodic_cleaner():
+    now = time.time() - keep_file_days * 86400
+    for f in os.listdir(data_dir):
+        fname = os.path.join(data_dir, f)
+        if os.stat(fname).st_mtime < now:
+            os.remove(fname)
 
 
 @app.post("/v1/upload")
@@ -44,7 +44,5 @@ def download_file(name_file: str):
 if __name__ == "__main__":
     if not os.path.isdir(data_dir):
         os.makedirs(data_dir)
-    t = threading.Thread(target=monitor_file_system, args=(data_dir, 15))
 
-    t.start()
-    uvicorn.run(app, port=8000, log_level="info")
+    uvicorn.run(app, port=8001, log_level="info")
