@@ -57,6 +57,11 @@ def download_file(name_file: str):
     return FileResponse(path=os.path.join(data_dir, name_file), media_type='application/octet-stream', filename=name_file)
 
 
+@app.get("/v1/download_temp/{name_file}")
+def download_file(name_file: str):
+    return FileResponse(path=os.path.join(temp_dir, name_file), media_type='image/jpeg', filename=name_file)
+
+
 if __name__ == "__main__":
     if not os.path.isdir(data_dir):
         os.makedirs(data_dir)
