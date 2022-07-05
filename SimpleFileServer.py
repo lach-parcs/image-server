@@ -11,10 +11,6 @@ from fastapi_utils.tasks import repeat_every
 
 logger = logging.getLogger(__name__)
 data_dir = "/data/APGS/images"
-temp_dir = data_dir + "/temp"
-
-if not os.path.isdir(temp_dir):
-    os.makedirs(temp_dir)
 
 keep_file_days = 15
 
@@ -34,8 +30,12 @@ def periodic_cleaner():
 @app.post("/v1/image-temp")
 async def upload_file_temp(file: UploadFile = File(...)):
     save_file_name = os.path.basename(file.filename)
-    save_file_name = datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")[:-3] + save_file_name
-    data_name = os.path.join(temp_dir, save_file_name)
+    now = datetime.datetime.now()
+    dirname = os.path.join(data_dir, now.strftime("%Y%m%d"))
+    data_name = os.path.join(dirname, now.strftime("%H%M%S%f")[:-3] + "." + save_file_name)
+    if not os.path.isdir(dirname):
+        os.makedirs(dirname)
+
     with open(data_name, 'wb') as image:
         content = await file.read()
         image.write(content)
