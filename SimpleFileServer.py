@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 import time
@@ -9,7 +10,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from fastapi_utils.tasks import repeat_every
 
 logger = logging.getLogger(__name__)
-data_dir = "/data/image.server"
+data_dir = "/data/APGS/images"
 temp_dir = data_dir + "/temp"
 
 if not os.path.isdir(temp_dir):
@@ -31,8 +32,9 @@ def periodic_cleaner():
 
 
 @app.post("/v1/image-temp")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file_temp(file: UploadFile = File(...)):
     save_file_name = os.path.basename(file.filename)
+    save_file_name = datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")[:-3] + save_file_name
     data_name = os.path.join(temp_dir, save_file_name)
     with open(data_name, 'wb') as image:
         content = await file.read()
@@ -58,7 +60,7 @@ def download_file(name_file: str):
 
 
 @app.get("/v1/download_temp/{name_file}")
-def download_file(name_file: str):
+def download_file_temp(name_file: str):
     return FileResponse(path=os.path.join(temp_dir, name_file), media_type='image/jpeg', filename=name_file)
 
 
