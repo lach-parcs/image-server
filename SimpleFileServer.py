@@ -1,6 +1,8 @@
 import datetime
+import glob
 import logging
 import os
+import shutil
 import time
 import uuid
 
@@ -16,23 +18,40 @@ keep_file_days = 15
 
 app = FastAPI()
 
+stored_data_dict = {}
+
 
 @app.on_event("startup")
-@repeat_every(seconds=1800, logger=logger, wait_first=False)
+def read_all_file_tree():
+    files = glob.glob(os.path.join(data_dir, "**/*.jpg"), recursive=True)
+    for f in files:
+        key = f.split(".")[-2]
+        if key not in stored_data_dict:
+            stored_data_dict[key] = []
+        stored_data_dict[key].append(f)
+
+
+@repeat_every(seconds=3600, logger=logger, wait_first=False)
 def periodic_cleaner():
-    now = time.time() - keep_file_days * 86400
-    for f in os.listdir(data_dir):
-        fname = os.path.join(data_dir, f)
-        if os.stat(fname).st_mtime < now:
-            os.remove(fname)
+    dir_list = sorted(os.listdir(data_dir))
+    dir_list = dir_list[: -keep_file_days]
+    for d in dir_list:
+        shutil.rmtree(os.path.join(data_dir, d))
 
 
+@app.post("/v1/upload")
 @app.post("/v1/image-temp")
 async def upload_file_temp(file: UploadFile = File(...)):
     save_file_name = os.path.basename(file.filename)
     now = datetime.datetime.now()
     dirname = os.path.join(data_dir, now.strftime("%Y%m%d"))
     data_name = os.path.join(dirname, now.strftime("%H%M%S%f")[:-3] + "." + save_file_name)
+
+    key = save_file_name.split(".")[-2]
+    if key not in stored_data_dict:
+        stored_data_dict[key] = []
+    stored_data_dict[key].append(data_name)
+
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
 
@@ -43,20 +62,20 @@ async def upload_file_temp(file: UploadFile = File(...)):
     return JSONResponse(content={"uuid": save_file_name}, status_code=200)
 
 
-@app.post("/v1/upload")
-async def upload_file(file: UploadFile = File(...)):
-    save_file_name = str(uuid.uuid1()) + ".jpg"
-    data_name = os.path.join(data_dir, save_file_name)
-    with open(data_name, 'wb') as image:
-        content = await file.read()
-        image.write(content)
-        image.close()
-    return JSONResponse(content={"uuid": save_file_name}, status_code=200)
-
-
-@app.get("/v1/download/{name_file}")
-def download_file(name_file: str):
-    return FileResponse(path=os.path.join(data_dir, name_file), media_type='application/octet-stream', filename=name_file)
+# @app.post("/v1/upload")
+# async def upload_file(file: UploadFile = File(...)):
+#     save_file_name = str(uuid.uuid1()) + ".jpg"
+#     data_name = os.path.join(data_dir, save_file_name)
+#     with open(data_name, 'wb') as image:
+#         content = await file.read()
+#         image.write(content)
+#         image.close()
+#     return JSONResponse(content={"uuid": save_file_name}, status_code=200)
+#
+#
+# @app.get("/v1/download/{name_file}")
+# def download_file(name_file: str):
+#     return FileResponse(path=os.path.join(data_dir, name_file), media_type='application/octet-stream', filename=name_file)
 
 
 @app.get("/v1/download_temp/{name_file}")
@@ -65,6 +84,7 @@ def download_file_temp(name_file: str):
 
 
 if __name__ == "__main__":
+
     if not os.path.isdir(data_dir):
         os.makedirs(data_dir)
 
