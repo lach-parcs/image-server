@@ -76,7 +76,7 @@ async def download_latesturl(lpr: str):
     if lpr in stored_data_dict:
         data_name = stored_data_dict[lpr][-1]
 
-        return JSONResponse(content={"url": data_name.replace(data_dir + "/", ""), "result": "ok"}, status_code=200)
+        return JSONResponse(content={"url": "/v1/download/latest?lpr=" + lpr, "result": "ok"}, status_code=200)
         # return FileResponse(path=data_name, media_type="image/jpeg", filename=os.path.basename(data_name))
     return JSONResponse(content={"result": "nok"}, status_code=404)
 
