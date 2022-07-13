@@ -59,7 +59,7 @@ async def upload_file_temp(file: UploadFile = File(...)):
         content = await file.read()
         image.write(content)
         image.close()
-    return JSONResponse(content={"uuid": save_file_name}, status_code=200)
+    return JSONResponse(content={"uuid": save_file_name, "result": "ok"}, status_code=200)
 
 
 @app.get("/v1/download/latest")
@@ -68,7 +68,17 @@ async def download_latest(lpr: str):
         data_name = stored_data_dict[lpr][-1]
         return StreamingResponse(io.BytesIO(open(data_name, "rb").read()), media_type="image/jpg")
         # return FileResponse(path=data_name, media_type="image/jpeg", filename=os.path.basename(data_name))
-    return JSONResponse(content="error", status_code=404)
+    return JSONResponse(content={"result": "nok"}, status_code=404)
+
+
+@app.get("/v1/download/latesturl")
+async def download_latest(lpr: str):
+    if lpr in stored_data_dict:
+        data_name = stored_data_dict[lpr][-1]
+
+        return JSONResponse(content={"url": data_name, "result": "ok"}, status_code=200)
+        # return FileResponse(path=data_name, media_type="image/jpeg", filename=os.path.basename(data_name))
+    return JSONResponse(content={"result": "nok"}, status_code=404)
 
 
 @app.get("/v1/search")
@@ -88,7 +98,7 @@ async def download_specific(path_name: str):
     if os.path.isfile(full_name):
         return StreamingResponse(io.BytesIO(open(full_name, "rb").read()), media_type="image/jpg")
 
-    return JSONResponse(content="error", status_code=404)
+    return JSONResponse(content={"result": "nok"}, status_code=404)
 
 # @app.post("/v1/upload")
 # async def upload_file(file: UploadFile = File(...)):
