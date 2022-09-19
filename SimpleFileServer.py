@@ -12,6 +12,13 @@ from fastapi_utils.tasks import repeat_every
 from starlette.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
+
+LOC_LPR = 5
+LOC_LP_START_X = 6
+LOC_LP_START_Y = 7
+LOC_LP_WIDTH = 8
+LOC_LP_HEIGHT = 9
+
 data_dir = "/data/APGS/images"
 
 keep_file_days = 15
@@ -23,9 +30,12 @@ stored_data_dict = {}
 
 @app.on_event("startup")
 def read_all_file_tree():
+    logger.info("startup .. NIMI")
     files = glob.glob(os.path.join(data_dir, "**/*.jpg"), recursive=True)
+    #logger.info("%s", files)
     for f in files:
-        key = f.split(".")[-2]
+        key = f.split(".")[5]
+        logger.info(f"key {key}")
         if key not in stored_data_dict:
             stored_data_dict[key] = []
         stored_data_dict[key].append(f)
@@ -70,12 +80,43 @@ async def download_latest(lpr: str):
         # return FileResponse(path=data_name, media_type="image/jpeg", filename=os.path.basename(data_name))
     return JSONResponse(content={"result": "nok"}, status_code=404)
 
+@app.get("/v1/download/latest2")
+async def download_latest(lpr: str):
+    if lpr in stored_data_dict:
+        data_name = stored_data_dict[lpr][-1]
+        return StreamingResponse(io.BytesIO(open(data_name, "rb").read()), media_type="image/jpg")
+        # return FileResponse(path=data_name, media_type="image/jpeg", filename=os.path.basename(data_name))
+    return JSONResponse(content={"result": "nok"}, status_code=404)
+
+@app.get("/v1/download/latesturl2")
+async def download_latesturl(lpr: str):
+    if lpr in stored_data_dict:
+        data_name = stored_data_dict[lpr][-1]
+        logger.info(f"data_name {data_name}")
+        _datums = data_name.split(".")
+        logger.info(f"{_datums}")
+        if len(_datums) < (LOC_LP_HEIGHT+2):
+           _lp_startx = 0
+           _lp_starty = 0
+           _lp_width = 0
+           _lp_height =0
+        else:
+           _lp_startx = _datums[LOC_LP_START_X]     
+           _lp_starty = _datums[LOC_LP_START_Y]
+           _lp_width =  _datums[LOC_LP_WIDTH]
+           _lp_height = _datums[LOC_LP_HEIGHT]
+           
+        #return JSONResponse(content={"url": "/v1/download/latest?lpr=" + lpr, "result": "ok"}, status_code=200)
+        return JSONResponse(content={"url": "/v1/download/latest?lpr=" + lpr, "plate_startx":_lp_startx, "plate_starty":_lp_starty, "plate_width":_lp_width, "plate_height": _lp_height, "result": "ok"}, status_code=200)
+        # return FileResponse(path=data_name, media_type="image/jpeg", filename=os.path.basename(data_name))
+    return JSONResponse(content={"result": "nok"}, status_code=404)
+
+
 
 @app.get("/v1/download/latesturl")
 async def download_latesturl(lpr: str):
     if lpr in stored_data_dict:
         data_name = stored_data_dict[lpr][-1]
-
         return JSONResponse(content={"url": "/v1/download/latest?lpr=" + lpr, "result": "ok"}, status_code=200)
         # return FileResponse(path=data_name, media_type="image/jpeg", filename=os.path.basename(data_name))
     return JSONResponse(content={"result": "nok"}, status_code=404)
@@ -120,5 +161,13 @@ if __name__ == "__main__":
 
     if not os.path.isdir(data_dir):
         os.makedirs(data_dir)
+        
+    logger.setLevel(logging.ERROR)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+    
+    logger.info("Test logg")
 
     uvicorn.run(app, host="0.0.0.0", port=8001, log_level="info")
