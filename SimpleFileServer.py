@@ -33,10 +33,11 @@ stored_data_dict = {}
 
 @app.on_event("startup")
 def read_all_file_tree():
-    files = glob.glob(os.path.join(data_dir, "**/*.jpg"), recursive=True)
+    files = sorted(glob.glob(os.path.join(data_dir, "**/*.jpg"), recursive=True)) 
     logger.info("%s", files) 
     for f in files:
         _list = f.split(".")
+
         if len(_list) != 11:
             logger.warning(f'invalid filename : {f}')
             continue
@@ -45,7 +46,7 @@ def read_all_file_tree():
         if key not in stored_data_dict:
             stored_data_dict[key] = []
         stored_data_dict[key].append(f)
-        #pprint.pprint(stored_data_dict)
+    pprint.pprint(stored_data_dict)
 
 
 @repeat_every(seconds=3600, logger=logger, wait_first=False)
