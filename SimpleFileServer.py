@@ -68,11 +68,11 @@ async def upload_file_temp(file: UploadFile = File(...)):
 
     #key = save_file_name.split(".")[-2]
     _tlist = save_file_name.split(".")
-    if len(_tlist) != 11:
+    if len(_tlist) != 10:
         logger.warning(f"invalid filename format :{save_file_name} ")
         return JSONResponse(content={"uuid": save_file_name, "result": "nok"}, status_code=404)
 
-    key = _tlist[LOC_LPR]    
+    key = _tlist[4]    
     if key not in stored_data_dict:
         stored_data_dict[key] = []
     stored_data_dict[key].append(data_name)
