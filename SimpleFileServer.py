@@ -1,4 +1,5 @@
 import datetime
+from distutils.log import warn
 import glob
 import io
 import logging
@@ -10,6 +11,8 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
 from fastapi_utils.tasks import repeat_every
 from starlette.responses import StreamingResponse
+
+import pprint
 
 logger = logging.getLogger(__name__)
 
@@ -30,15 +33,19 @@ stored_data_dict = {}
 
 @app.on_event("startup")
 def read_all_file_tree():
-    logger.info("startup .. NIMI")
     files = glob.glob(os.path.join(data_dir, "**/*.jpg"), recursive=True)
-    #logger.info("%s", files)
+    logger.info("%s", files) 
     for f in files:
-        key = f.split(".")[5]
+        _list = f.split(".")
+        if len(_list) != 11:
+            logger.warning(f'invalid filename : {f}')
+            continue
+        key = _list[LOC_LPR]
         logger.info(f"key {key}")
         if key not in stored_data_dict:
             stored_data_dict[key] = []
         stored_data_dict[key].append(f)
+        #pprint.pprint(stored_data_dict)
 
 
 @repeat_every(seconds=3600, logger=logger, wait_first=False)
@@ -52,12 +59,19 @@ def periodic_cleaner():
 @app.post("/v1/upload")
 @app.post("/v1/image-temp")
 async def upload_file_temp(file: UploadFile = File(...)):
+    logger.info("upload");
     save_file_name = os.path.basename(file.filename)
     now = datetime.datetime.now()
     dirname = os.path.join(data_dir, now.strftime("%Y%m%d"))
     data_name = os.path.join(dirname, now.strftime("%H%M%S%f")[:-3] + "." + save_file_name)
 
-    key = save_file_name.split(".")[-2]
+    #key = save_file_name.split(".")[-2]
+    _tlist = save_file_name.split(".")
+    if len(_tlist) != 11:
+        logger.warning(f"invalid filename format :{save_file_name} ")
+        return JSONResponse(content={"uuid": save_file_name, "result": "nok"}, status_code=404)
+
+    key = _tlist[LOC_LPR]    
     if key not in stored_data_dict:
         stored_data_dict[key] = []
     stored_data_dict[key].append(data_name)
@@ -71,7 +85,6 @@ async def upload_file_temp(file: UploadFile = File(...)):
         image.close()
     return JSONResponse(content={"uuid": save_file_name, "result": "ok"}, status_code=200)
 
-
 @app.get("/v1/download/latest")
 async def download_latest(lpr: str):
     if lpr in stored_data_dict:
@@ -81,7 +94,8 @@ async def download_latest(lpr: str):
     return JSONResponse(content={"result": "nok"}, status_code=404)
 
 @app.get("/v1/download/latest2")
-async def download_latest(lpr: str):
+async def download_latest2(lpr: str):
+
     if lpr in stored_data_dict:
         data_name = stored_data_dict[lpr][-1]
         return StreamingResponse(io.BytesIO(open(data_name, "rb").read()), media_type="image/jpg")
@@ -89,7 +103,7 @@ async def download_latest(lpr: str):
     return JSONResponse(content={"result": "nok"}, status_code=404)
 
 @app.get("/v1/download/latesturl2")
-async def download_latesturl(lpr: str):
+async def download_latesturli2(lpr: str):
     if lpr in stored_data_dict:
         data_name = stored_data_dict[lpr][-1]
         logger.info(f"data_name {data_name}")
@@ -162,7 +176,7 @@ if __name__ == "__main__":
     if not os.path.isdir(data_dir):
         os.makedirs(data_dir)
         
-    logger.setLevel(logging.ERROR)
+    logger.setLevel(logging.WARNING)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(formatter)
