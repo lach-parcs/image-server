@@ -84,7 +84,7 @@ async def download_latest(lpr: str):
     global saved_data_list
     if lpr in saved_data_list:
         data_name = saved_data_list[lpr][-1]
-        return StreamingResponse(io.BytesIO(open(data_name, "rb").read()), media_type="image/jpg")
+        return StreamingResponse(io.BytesIO(open(os.path.join(DATA_DIR, data_name), "rb").read()), media_type="image/jpg")
 
     return JSONResponse(content={"result": "nok"}, status_code=404)
 
@@ -95,7 +95,7 @@ async def download_latest2(lpr: str):
 
     if lpr in saved_data_list:
         data_name = saved_data_list[lpr][-1]
-        return StreamingResponse(io.BytesIO(open(data_name, "rb").read()), media_type="image/jpg")
+        return StreamingResponse(io.BytesIO(open(os.path.join(DATA_DIR, data_name), "rb").read()), media_type="image/jpg")
 
     return JSONResponse(content={"result": "nok"}, status_code=404)
 
