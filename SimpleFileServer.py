@@ -4,9 +4,10 @@ import logging
 import os
 
 import uvicorn
+from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
-from fastapi_utils.tasks import repeat_every
+# from fastapi_utils.tasks import repeat_every
 from starlette.responses import StreamingResponse
 
 from CFSUtils import CFSUtils, FNAME_INDEX_CAM_VALUE, FNAME_INDEX_CAM_VALUE_HEIGHT, FNAME_INDEX_CAM_VALUE_WIDTH, FNAME_INDEX_CAM_VALUE_POS_Y, FNAME_INDEX_CAM_VALUE_POS_X
@@ -36,7 +37,7 @@ def initialize():
     saved_data_list = CFSUtils.read_images(DATA_DIR, KEEP_IMAGE_DAYS)
 
 
-@repeat_every(seconds=3600, logger=Logger, wait_first=False)
+# @repeat_every(seconds=10, logger=Logger, wait_first=False)
 def refine_saved_images():
     global saved_data_list
 
@@ -172,6 +173,8 @@ if __name__ == "__main__":
     stream_handler.setFormatter(formatter)
     Logger.addHandler(stream_handler)
 
-    Logger.info("Test logg")
+    sched = BackgroundScheduler(timezone="Asia/Seoul")
+    sched.start()
+    sched.add_job(refine_saved_images, 'interval', seconds=3600, id="refine_images")
 
     uvicorn.run(app, host="0.0.0.0", port=8001, log_level="info")
