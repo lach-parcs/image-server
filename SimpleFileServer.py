@@ -21,7 +21,7 @@ from version import VERSION
 """
 
 Logger = logging.getLogger(__name__)
-DATA_DIR = "/data/APGS/images"
+DATA_DIR = ".imageserver"
 KEEP_IMAGE_DAYS = 15
 
 app = FastAPI()
